@@ -76,7 +76,8 @@ def scrape_google_news():
         print(f"조세 전문 뉴스 수집 중... (대상: {', '.join(allowed_sources)})")
         
         for keyword in tax_keywords:
-            url = f"https://news.google.com/rss/search?q={keyword}+when:2d&hl=ko&gl=KR&ceid=KR:ko"
+            # when:1d = 최근 24시간 이내
+            url = f"https://news.google.com/rss/search?q={keyword}+when:1d&hl=ko&gl=KR&ceid=KR:ko"
             
             try:
                 response = requests.get(url, timeout=15)
@@ -93,6 +94,22 @@ def scrape_google_news():
                         title = title_elem.text
                         link = link_elem.text
                         source = source_elem.text if source_elem is not None else ''
+                        
+                        # 발행일 확인 (오늘 기사만)
+                        pubdate_elem = item.find('pubDate')
+                        if pubdate_elem is not None:
+                            from datetime import datetime, timedelta
+                            try:
+                                pub_date_str = pubdate_elem.text
+                                # RSS 날짜 형식 파싱 (예: Mon, 04 Nov 2025 14:30:00 GMT)
+                                pub_date = datetime.strptime(pub_date_str, '%a, %d %b %Y %H:%M:%S %Z')
+                                today = datetime.utcnow().date()
+                                
+                                # 오늘 발행된 기사가 아니면 스킵
+                                if pub_date.date() != today:
+                                    continue
+                            except:
+                                pass  # 날짜 파싱 실패하면 일단 포함
                         
                         # 지정된 언론사만
                         if any(allowed in source for allowed in allowed_sources):
