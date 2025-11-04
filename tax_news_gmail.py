@@ -81,7 +81,7 @@ def scrape_google_news():
     return all_news
 
 def summarize_with_ai(news_list):
-    """OpenAI GPT로 뉴스 요약"""
+    """OpenAI GPT로 뉴스 요약 (고품질)"""
     if not news_list:
         return "수집된 뉴스가 없습니다."
     
@@ -95,23 +95,42 @@ def summarize_with_ai(news_list):
         ])
         
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",  # 더 강력한 모델 사용
             messages=[
-                {"role": "system", "content": "당신은 세금 뉴스를 요약하는 전문가입니다."},
-                {"role": "user", "content": f"""다음은 오늘의 세금 관련 뉴스 제목입니다. 각 뉴스를 1-2문장으로 핵심만 요약해주세요.
+                {"role": "system", "content": """당신은 세무 전문가이자 뉴스 에디터입니다. 
+세금 뉴스를 명확하고 이해하기 쉽게 요약하되, 전문성을 유지하세요.
+- 핵심 내용(누가, 무엇을, 왜, 어떻게)을 명확히 전달
+- 세금 관련 수치나 기간이 있으면 반드시 포함
+- 일반인도 이해할 수 있는 쉬운 언어 사용
+- 각 뉴스당 2-3문장으로 구체적으로 작성"""}, 
+                {"role": "user", "content": f"""다음 세금 뉴스들을 요약해주세요.
 
 {news_text}
 
-각 뉴스마다 번호와 [출처]를 유지하고 간결하게 요약해주세요."""}
+각 뉴스를 다음 형식으로 요약:
+번호. [출처] 핵심 요약 (2-3문장, 구체적인 내용 포함)"""}
             ],
-            max_tokens=2000,
-            temperature=0.3
+            max_tokens=2500,
+            temperature=0.2  # 더 일관적인 결과
         )
         
         return response.choices[0].message.content
     except Exception as e:
         print(f"AI 요약 오류: {e}")
-        return "AI 요약을 생성할 수 없습니다."
+        # GPT-4o 실패시 4o-mini로 재시도
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "세무 전문가로서 뉴스를 명확하고 구체적으로 요약하세요."},
+                    {"role": "user", "content": f"다음 세금 뉴스를 각각 2-3문장으로 요약:\n\n{news_text}"}
+                ],
+                max_tokens=2000,
+                temperature=0.2
+            )
+            return response.choices[0].message.content
+        except:
+            return "AI 요약을 생성할 수 없습니다."
 
 def send_email(news_list, summary):
     """Gmail로 이메일 전송"""
