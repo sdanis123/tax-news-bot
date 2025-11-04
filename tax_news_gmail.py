@@ -81,7 +81,7 @@ def scrape_google_news():
     return all_news
 
 def summarize_with_ai(news_list):
-    """OpenAI GPT로 뉴스 요약 (고품질)"""
+    """OpenAI GPT로 뉴스 요약 (4o-mini 최적화)"""
     if not news_list:
         return "수집된 뉴스가 없습니다."
     
@@ -95,42 +95,33 @@ def summarize_with_ai(news_list):
         ])
         
         response = client.chat.completions.create(
-            model="gpt-4o",  # 더 강력한 모델 사용
+            model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": """당신은 세무 전문가이자 뉴스 에디터입니다. 
-세금 뉴스를 명확하고 이해하기 쉽게 요약하되, 전문성을 유지하세요.
-- 핵심 내용(누가, 무엇을, 왜, 어떻게)을 명확히 전달
-- 세금 관련 수치나 기간이 있으면 반드시 포함
-- 일반인도 이해할 수 있는 쉬운 언어 사용
-- 각 뉴스당 2-3문장으로 구체적으로 작성"""}, 
-                {"role": "user", "content": f"""다음 세금 뉴스들을 요약해주세요.
+                {"role": "system", "content": """당신은 세무 전문 뉴스 에디터입니다. 
+각 뉴스 제목을 분석하여 다음 규칙으로 요약하세요:
+1. 제목에서 핵심 키워드 파악 (세금 종류, 금액, 대상, 기간 등)
+2. "누가 무엇을 어떻게" 형식으로 명확히 작성
+3. 구체적인 수치나 날짜가 있으면 반드시 포함
+4. 각 뉴스당 정확히 2문장으로 작성
+5. 전문 용어는 괄호로 쉽게 설명
+
+나쁜 예: "세법이 바뀐다는 내용입니다"
+좋은 예: "국세청이 2025년부터 가상자산 소득세(암호화폐 거래 수익에 부과되는 세금) 과세를 2년 유예한다고 발표했다. 유예 기간 동안 과세 기준과 세율을 재검토할 예정이다." """}, 
+                {"role": "user", "content": f"""다음 세금 뉴스 제목들을 요약해주세요.
 
 {news_text}
 
-각 뉴스를 다음 형식으로 요약:
-번호. [출처] 핵심 요약 (2-3문장, 구체적인 내용 포함)"""}
+형식:
+번호. [출처] 첫 번째 문장. 두 번째 문장."""}
             ],
             max_tokens=2500,
-            temperature=0.2  # 더 일관적인 결과
+            temperature=0.1  # 더 일관적인 결과
         )
         
         return response.choices[0].message.content
     except Exception as e:
         print(f"AI 요약 오류: {e}")
-        # GPT-4o 실패시 4o-mini로 재시도
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "세무 전문가로서 뉴스를 명확하고 구체적으로 요약하세요."},
-                    {"role": "user", "content": f"다음 세금 뉴스를 각각 2-3문장으로 요약:\n\n{news_text}"}
-                ],
-                max_tokens=2000,
-                temperature=0.2
-            )
-            return response.choices[0].message.content
-        except:
-            return "AI 요약을 생성할 수 없습니다."
+        return "AI 요약을 생성할 수 없습니다."
 
 def send_email(news_list, summary):
     """Gmail로 이메일 전송"""
