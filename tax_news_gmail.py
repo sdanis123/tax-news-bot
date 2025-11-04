@@ -15,16 +15,26 @@ RECIPIENT_EMAIL = os.environ.get('RECIPIENT_EMAIL', "YOUR_EMAIL@gmail.com")
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', "YOUR_OPENAI_API_KEY")
 
 def scrape_google_news():
-    """구글 뉴스에서 세금 관련 뉴스 수집"""
+    """구글 뉴스에서 세금 관련 뉴스 수집 (특정 언론사만)"""
     all_news = []
     
+    # 수집할 언론사 목록
+    allowed_sources = [
+        '한국세정신문',
+        '조세일보',
+        '세정일보',
+        '세무사신문',
+        '택스워치',
+        '조세금융신문'
+    ]
+    
     # 검색할 키워드들
-    keywords = ['세금', '조세', '국세청', '부가가치세', '법인세', '소득세']
+    keywords = ['세금', '조세', '국세청', '부가가치세', '법인세']
     
     try:
-        print("구글 뉴스에서 세금 뉴스 수집 중...")
+        print(f"구글 뉴스에서 세금 뉴스 수집 중... (대상: {', '.join(allowed_sources)})")
         
-        for keyword in keywords[:2]:  # 처음 2개 키워드만 사용
+        for keyword in keywords:
             # 구글 뉴스 RSS 피드
             url = f"https://news.google.com/rss/search?q={keyword}+when:1d&hl=ko&gl=KR&ceid=KR:ko"
             
@@ -36,7 +46,7 @@ def scrape_google_news():
                 root = ET.fromstring(response.content)
                 
                 # 뉴스 아이템 찾기
-                items = root.findall('.//item')[:5]  # 각 키워드당 5개
+                items = root.findall('.//item')
                 
                 for item in items:
                     title_elem = item.find('title')
@@ -46,16 +56,18 @@ def scrape_google_news():
                     if title_elem is not None and link_elem is not None:
                         title = title_elem.text
                         link = link_elem.text
-                        source = source_elem.text if source_elem is not None else '출처 미상'
+                        source = source_elem.text if source_elem is not None else ''
                         
-                        # 중복 체크
-                        if not any(news['title'] == title for news in all_news):
-                            all_news.append({
-                                'site': source,
-                                'title': title,
-                                'link': link
-                            })
-                            print(f"  ✓ [{source}] {title[:50]}")
+                        # 지정된 언론사만 필터링
+                        if any(allowed in source for allowed in allowed_sources):
+                            # 중복 체크
+                            if not any(news['title'] == title for news in all_news):
+                                all_news.append({
+                                    'site': source,
+                                    'title': title,
+                                    'link': link
+                                })
+                                print(f"  ✓ [{source}] {title[:50]}")
                 
             except Exception as e:
                 print(f"  {keyword} 키워드 오류: {e}")
